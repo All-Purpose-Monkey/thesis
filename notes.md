@@ -6,7 +6,11 @@ file:///Users/yashsaraswat/Downloads/ReadMe_DALE%20(1).html
     2. .wav to stft transform images
 2. SSL libraries or pipelines:
     1. Encoder
+        - libraries?
+        - training methods and implmentation
     2. Pre-text training
     3. Regressor Head
 3. Other repositories and how they are handling the data
 4. SSL implementation book for sounds
+
+1. Dimitir Sharidoff
