@@ -7,7 +7,8 @@ def split_data(X, y, test_size=0.2, seed=42):
         X,
         y,
         test_size=test_size,
-        random_state=seed
+        random_state=seed,
+        shuffle=True
     )
 
 

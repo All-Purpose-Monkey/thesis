@@ -28,4 +28,4 @@ class STFTDataset(Dataset):
 
             return stft, label
 
-        return stft
+        return (stft,)
