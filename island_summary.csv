@@ -1,0 +1,5 @@
+house,step_s,rows,islands,med_len_seg,mean_len_seg,p90_len_seg,max_len_seg,med_len_min,max_len_min,pct_in_islands_ge_30s,full_blocks_30s,pct_in_islands_ge_1min,full_blocks_1min,pct_in_islands_ge_2min,full_blocks_2min,pct_in_islands_ge_5min,full_blocks_5min,persist_kettle,persist_toaster,persist_microwave,persist_dishwasher,persist_fridge,persist_washing_machine
+house1_binarized.csv,6,5227915,2521777,1,2.07,4,144,0.1,14.4,26.1,238212,12.4,54938,10.0,20296,0.4,356,0.956,0.972,0.933,0.993,0.991,0.901
+house2_binarized.csv,6,1513903,108249,2,13.99,35,331,0.2,33.1,93.7,267169,93.3,123618,92.1,52470,14.2,3427,0.962,0.893,0.943,0.993,0.993,0.914
+house5_binarized.csv,6,914065,75827,6,12.05,30,241,0.6,24.1,92.7,153899,84.9,64517,64.8,22831,12.1,1720,0.946,0.921,0.896,0.992,0.996,0.907
+COMBINED,6,7655883,2705853,1,2.83,4,331,,,47.4,659280,37.0,243073,32.8,95597,4.5,5503,,,,,,
