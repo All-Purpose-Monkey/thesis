@@ -1,0 +1,22 @@
+seed: 42
+
+ssl:
+  epochs: 50
+  batch_size: 128
+  lr: 0.0005
+
+downstream:
+  epochs: 100
+  batch_size: 256
+  lr: 0.0001
+
+data:
+  test_size: 0.2
+
+appliances:
+  - kettle
+  - toaster
+  - microwave
+  - dishwasher
+  - fridge
+  - washing_machine

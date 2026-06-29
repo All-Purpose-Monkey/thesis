@@ -1,0 +1,80 @@
+audioread==3.1.0
+beautifulsoup4==4.14.3
+brotlicffi @ file:///home/task_176496125431831/conda-bld/brotlicffi_1764961387175/work
+carbontracker==2.4.5
+certifi @ file:///home/task_177937030087534/croot/certifi_1779370327170/work/certifi
+cffi @ file:///home/task_176183215827778/conda-bld/cffi_1761832774246/work
+charset-normalizer @ file:///home/task_176174482135433/conda-bld/charset-normalizer_1761744871447/work
+click==8.4.1
+contourpy==1.3.2
+cycler==0.12.1
+decorator==5.3.1
+filelock @ file:///home/task_176943957887863/croot/filelock_1769440496799/work
+fonttools==4.63.0
+fsspec==2026.4.0
+future==1.0.0
+geocoder==1.38.1
+gmpy2 @ file:///home/task_176474799466805/conda-bld/gmpy2_1764748040727/work
+idna @ file:///home/task_176191177045451/conda-bld/idna_1761911980742/work
+importlib_metadata==9.0.0
+Jinja2 @ file:///croot/jinja2_1741710844255/work
+joblib==1.5.3
+kiwisolver==1.5.0
+lazy-loader==0.5
+librosa==0.11.0
+llvmlite==0.47.0
+MarkupSafe @ file:///croot/markupsafe_1738584038848/work
+matplotlib==3.10.9
+mkl-service==2.5.2
+mkl_fft @ file:///home/task_177730042096369/croot/mkl_fft_1777300464161/work
+mkl_random @ file:///home/task_176159293813909/conda-bld/mkl_random_1761592952512/work
+mpmath @ file:///croot/mpmath_1690848262763/work
+msgpack==1.1.2
+networkx @ file:///croot/networkx_1737039604450/work
+numba==0.65.1
+numpy @ file:///home/task_177619032023410/croot/numpy_and_numpy_base_1776190368994/work/dist/numpy-2.2.5-cp310-cp310-linux_x86_64.whl#sha256=0148211ba260b4bb27c3ceaa36d0a564fda110f5e80228fa1a30b81ba4e6f53b
+nvidia-cublas-cu11==11.11.3.6
+nvidia-cuda-cupti-cu11==11.8.87
+nvidia-cuda-nvrtc-cu11==11.8.89
+nvidia-cuda-runtime-cu11==11.8.89
+nvidia-cudnn-cu11==9.1.0.70
+nvidia-cufft-cu11==10.9.0.58
+nvidia-curand-cu11==10.3.0.86
+nvidia-cusolver-cu11==11.4.1.48
+nvidia-cusparse-cu11==11.7.5.86
+nvidia-ml-py==13.595.45
+nvidia-nccl-cu11==2.21.5
+nvidia-nvtx-cu11==11.8.86
+packaging==26.0
+pandas==2.3.3
+pillow @ file:///home/task_177797437225559/croot/pillow_1777974404640/work
+platformdirs==4.9.6
+pooch==1.9.0
+psutil==7.2.2
+py-cpuinfo==9.0.0
+pycparser @ file:///home/task_177495969016250/croot/pycparser_1774959730411/work
+pyparsing==3.3.2
+PySocks @ file:///home/task_176175228103966/conda-bld/pysocks_1761753009555/work
+python-dateutil==2.9.0.post0
+pytz==2026.2
+PyYAML @ file:///home/task_176346546342115/conda-bld/pyyaml_1763465494987/work
+ratelim==0.1.6
+requests @ file:///home/task_177506598436692/croot/requests_1775066074113/work
+scikit-learn==1.7.2
+scipy==1.15.3
+seaborn==0.13.2
+six==1.17.0
+soundfile==0.13.1
+soupsieve==2.8.3
+soxr==1.1.0
+sympy @ file:///home/task_176476278707978/conda-bld/sympy_1764762918518/work
+threadpoolctl==3.6.0
+torch==2.7.1+cu118
+torchaudio==2.7.1+cu118
+torchvision==0.22.1+cu118
+tqdm==4.67.3
+triton==3.3.1
+typing_extensions @ file:///croot/typing_extensions_1756280817316/work
+tzdata==2026.2
+urllib3 @ file:///home/task_177853563669491/croot/urllib3_1778536188789/work
+zipp==4.1.0
