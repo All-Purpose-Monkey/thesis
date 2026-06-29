@@ -191,123 +191,134 @@ def preprocess_nilm_states(df_path, appliance_cols):
 
     return df
 
-def chop_flac(flac_folder, cfg_file, output_base, sample_rate=16000, window_sec=6, hop_samples=256, n_fft=1028, mode="zscore", scale = "db", scale_f=20):
-
+def chop_flac(flac_folder, cfg_file, output_base, sample_rate=16000, window_sec=6, hop_samples=256, n_fft=1028, mode="zscore", scale = "db", scale_f=20, channel=1):
+    """
+    channel=0 → voltage, channel=1 → current (default, backward-compatible).
+    Output is written to output_base/<channel_name>/... so current and voltage
+    segments live in separate subfolders without touching pre-existing data.
+    """
+ 
+    channel_names = {0: "voltage", 1: "current"}
+    if channel not in channel_names:
+        raise ValueError(f"channel must be 0 (voltage) or 1 (current), got {channel}")
+ 
     ADC_HALF_RANGE = 2**31
     config = configparser.ConfigParser()
     cfg_path = os.path.expanduser(cfg_file)
     read_files = config.read(cfg_path)
-
+ 
     if not read_files:
         raise FileNotFoundError(f"Calibration file not found: {cfg_path}")
-
+ 
     volts_per_adc_step = float(config["Calibration"]["volts_per_adc_step"])
     amps_per_adc_step = float(config["Calibration"]["amps_per_adc_step"])
-
+ 
     print(f"Calibration loaded:\nVolts per ADC step: {volts_per_adc_step}\nAmps per ADC step: {amps_per_adc_step}")
-
+ 
     flac_folder = os.path.expanduser(flac_folder)
     output_base = os.path.expanduser(output_base)
+    output_base = os.path.join(output_base, channel_names[channel])
     os.makedirs(output_base, exist_ok=True)
-
+    print(f"Channel: {channel_names[channel]}  |  Output base: {output_base}")
+ 
     flac_files = sorted(glob.glob(os.path.join(flac_folder, "*.flac")))
     print("Found FLAC files:", flac_files)
-
+ 
     for flac_file in flac_files:
-
+ 
         filename = os.path.basename(flac_file.split(".")[0])
         file_folder = os.path.join(output_base, filename)
-
+ 
         os.makedirs(file_folder, exist_ok=True)
-
+ 
         # ---------------------------------
         # CHECK OUTPUT FOLDER BEFORE LOADING FLAC
         # ---------------------------------
         existing_segments = glob.glob(os.path.join(file_folder, "*.npy"))
-
+ 
         if len(existing_segments) >= 500:
             print(f"Skipping {filename}: already {len(existing_segments)} segments")
             continue
-
+ 
         print("Processing:", filename)
-
+ 
         # ---------------------------------
         # LOAD AUDIO
         # ---------------------------------
         audio, sr = sf.read(flac_file)
-
+ 
         if sr != sample_rate:
             raise ValueError(f"Expected sample rate {sample_rate}, got {sr}")
-
+ 
         if audio.ndim < 2 or audio.shape[1] < 2:
             raise ValueError("Expected at least 2 channels (Voltage, Current)")
-
+ 
         print(f"Audio shape after loading: {audio.shape}, sample rate: {sr}")
-
+ 
         # ---------------------------------
         # APPLY CALIBRATION
         # ---------------------------------
         voltage = volts_per_adc_step * ADC_HALF_RANGE * audio[:, 0]
         current = amps_per_adc_step * ADC_HALF_RANGE * audio[:, 1]
-
+ 
         calibrated_audio = np.column_stack([voltage, current])
-
+ 
         print(f"Calibrated audio shape: {calibrated_audio.shape}")
-
+ 
         # ---------------------------------
         # SEGMENTATION
         # ---------------------------------
         calibrated_audio = np.column_stack([voltage, current])
-
+ 
         # FLAC-level normalization (choose mode)
-
+ 
         calibrated_audio = normalize_flac_level(calibrated_audio, mode=mode)
         win_samples = window_sec * sr
         num_segments = int(np.ceil(len(calibrated_audio) / win_samples))
-
+ 
         print(f"Number of segments to generate: {num_segments}")
-
+ 
         for seg_idx in range(num_segments):
-
+ 
             file_num = int(filename)
             timestamp = file_num + (seg_idx + 1) * 6
-
+ 
             output_path = os.path.join(file_folder, f"{timestamp}.npy")
-
+ 
             if os.path.exists(output_path):
                 print(f"Segment exists, skipping: {timestamp}.npy")
                 continue
-
+ 
             start = seg_idx * win_samples
             stop = start + win_samples
-
+ 
             segment = calibrated_audio[start:stop, :]
-
+ 
             if segment.shape[0] < win_samples:
                 pad_len = win_samples - segment.shape[0]
                 segment = np.pad(segment, ((0, pad_len), (0, 0)), mode='constant')
-
-            stft_volt = np.abs(librosa.stft(
-                segment[:, 0],
+ 
+            stft_current = np.abs(librosa.stft(
+                segment[:, channel],
                 n_fft=n_fft,
                 hop_length=hop_samples,
                 window='hann'
             ))
-
+ 
             epsilon = 1e-8
-
+ 
             if scale == "db":
-
-                stft_volt = scale_f * np.log10(stft_volt + epsilon)
+ 
+                stft_current = scale_f * np.log20(stft_current + epsilon)
             
             elif scale == "log":
-                stft_volt = np.log1p(stft_volt + epsilon)
-
-            np.save(output_path, stft_volt.astype(np.float16))
-
+                stft_current = np.log1p(stft_current + epsilon)
+ 
+            np.save(output_path, stft_current.astype(np.float16))
+ 
         print(f"Processed {filename}: {num_segments} segments saved\n")
 
-def mash_that(stitched_csv_path, stft_base,path=True):
+def mash_that(stitched_csv_path, stft_base,path=True, max_dirs=None):
     """
     Aligns stitched .dat DataFrame with timestamped STFT folders to produce
     X and y ready for ML.
@@ -350,7 +361,11 @@ def mash_that(stitched_csv_path, stft_base,path=True):
 
     stft_base = os.path.expanduser(stft_base)
     # --- Traverse nested folder structure ---
-    for root_folder in sorted(os.listdir(stft_base)):
+    all_dirs = sorted(os.listdir(stft_base))
+    if max_dirs is not None:
+        all_dirs = all_dirs[:max_dirs]
+
+    for root_folder in all_dirs:
         root_path = os.path.join(stft_base, root_folder)
         if not os.path.isdir(root_path):
             continue
@@ -528,8 +543,10 @@ def plot_stft_example(stft_file= "~/house_1/stft_segments/2013/wk38/1379304000/1
     plt.title('Voltage STFT')
     plt.show()
 
-def binarize_labels(df_path,appliance_names, threshold=5):
+def binarize_labels(df_path, appliance_names, threshold=None):
 
+    if threshold is None:
+        threshold = [5] * len(appliance_names)
     # -------------------------
     # Load CSV
     # -------------------------
@@ -588,18 +605,15 @@ def binarize_labels(df_path,appliance_names, threshold=5):
         )
 
     # -------------------------
-    # Binarize
-    # < threshold -> 0
-    # >= threshold -> 1
-    # NaN remains NaN
+    # Binarize — per-appliance threshold
     # -------------------------
 
-    for c in appliance_cols:
+    for c, t in zip(appliance_cols, threshold):
 
         df[c] = np.where(
             df[c].isna(),
             np.nan,
-            (df[c] >= threshold).astype(float)
+            (df[c] >= t).astype(float)
         )
 
     # -------------------------
@@ -613,7 +627,7 @@ def binarize_labels(df_path,appliance_names, threshold=5):
     # -------------------------
 
     df = df.reset_index(drop=True)
-
+    print(f"Binarized labels with thresholds {threshold}:\n", df.head())
     return df
 
 def build_dataset_artifacts(
@@ -686,7 +700,52 @@ def build_dataset_artifacts(
 
     print("\nALL HOUSE ARTIFACTS BUILT SUCCESSFULLY")
 
-#downloader.download_flac_files(house=1, week='07', year=2014, days=(2, 4, 6), active_hrs=True, active_range=(7, 23), download_dir="~/thesis/data")
-#downloader.download_flac_files(house=2, week=38, year=2013, days=(2, 4, 6), active_hrs=True, active_range=(7, 23), download_dir="~/thesis/data")
-#downloader.download_flac_files(house=5, week=29, year=2014, days=(2, 4, 6), active_hrs=True, active_range=(7, 23), download_dir="~/thesis/data")
+'''
+downloader.download_flac_files(house=1, week=42, year=2014, days=(1,2,3, 4,5, 6), active_hrs=True, active_range=(7, 23), download_dir="~/thesis/data")
+downloader.download_flac_files(house=2, week=38, year=2013, days=(1,2,3, 4,5, 6), active_hrs=True, active_range=(7, 23), download_dir="~/thesis/data")
+downloader.download_flac_files(house=5, week=29, year=2014, days=(1,2,3, 4,5, 6), active_hrs=True, active_range=(7, 23), download_dir="~/thesis/data")
+appliances = ["kettle", "toaster", "microwave", "dishwasher", "fridge", "washing_machine"]
+h1_t=[10,10,10,10,10,10] 
+h2_t=[10,10,30,40,20,10]
+h5_t=[10,10,60,20,20,20]
+
+
+
+#binarized_labels_1= binarize_labels("~/thesis/data/house_1/house1_stitched.csv", appliances, threshold=h1_t)
+#binarized_labels_1.to_csv("~/thesis/data/house_1/house1_binarized.csv", index=False)
+
+#binarized_labels_2 = binarize_labels("~/thesis/data/house_2/house2_stitched.csv", appliances, threshold=h2_t)
+#binarized_labels_2.to_csv("~/thesis/data/house_2/house2_binarized.csv", index=False)
+#binarized_labels_5 = binarize_labels("~/thesis/data/house_5/house5_stitched.csv", appliances, threshold=h5_t)
+#binarized_labels_5.to_csv("~/thesis/data/house_5/house5_binarized.csv", index=False)
+
+
+chop_flac(flac_folder="~/thesis/data/house_1/flac_files/2014/wk42/", cfg_file="~/Downloads/calibration_house_1.cfg", output_base="~/thesis/data/house_1/stft_segments/2014/wk42/", sample_rate=16000, window_sec=6, hop_samples=512, n_fft=1024, scale="db", scale_f=20, mode="none")
+chop_flac(flac_folder="~/thesis/data/house_2/flac_files/2013/wk38/", cfg_file="~/Downloads/calibration_house_2.cfg", output_base="~/thesis/data/house_2/stft_segments/2013/wk38/", sample_rate=16000, window_sec=6, hop_samples=512, n_fft=1024, scale="db", scale_f=20, mode="none")
+chop_flac(flac_folder="~/thesis/data/house_5/flac_files/2014/wk29/", cfg_file="~/Downloads/calibration_house_5.cfg", output_base="~/thesis/data/house_5/stft_segments/2014/wk29/", sample_rate=16000, window_sec=6, hop_samples=512, n_fft=1024, scale="db", scale_f=20, mode="none")
+
+X1,y1 =mash_that( "~/thesis/data/house_1/house1_binarized.csv", "~/thesis/data/house_1/stft_segments/2014/wk42/",path=True)
+print(f"X shape: {len(X1)}, y shape: {len(y1)}")
+print(f"Example X[0] shape: {X1[0].shape}, y[0]: {y1[0]}")
+y1 = np.array(y1)
+print(f"active samples per appliance: {y1.sum(axis=0)}")
+X2,y2 =mash_that( "~/thesis/data/house_2/house2_binarized.csv", "~/thesis/data/house_2/stft_segments/2013/wk38/",path=True)
+print(f"X shape: {len(X2)}, y shape: {len(y2)}")
+print(f"Example X[0] shape: {X2[0].shape}, y[0]: {y2[0]}")
+y2 = np.array(y2)
+print(f"active samples per appliance: {y2.sum(axis=0)}")
+X5,y5 =mash_that( "~/thesis/data/house_5/house5_binarized.csv", "~/thesis/data/house_5/stft_segments/2014/wk29/",path=True)
+print(f"X shape: {len(X5)}, y shape: {len(y5)}")
+print(f"Example X[0] shape: {X5[0].shape}, y[0]: {y5[0]}")
+y5 = np.array(y5)
+print(f"active samples per appliance: {y5.sum(axis=0)}")
+#Big_X = np.concatenate([np.array(X1),np.array(X2),np.array(X5)], axis=0)
+#Big_y = np.concatenate([np.array(y1),np.array(y2),np.array(y5)], axis=0)
+
+
+plot_stft_example("~/thesis/data/house_1/stft_segments/2014/wk42/1413183600/1413183660.npy")
+plot_stft_example("~/thesis/data/house_1/stft_segments/2014/wk42/1413183600/1413183678.npy")
+plot_stft_example("~/thesis/data/house_1/stft_segments/2014/wk42/1413183600/1413185580.npy")
+plot_stft_example("~/thesis/data/house_1/stft_segments/2014/wk42/1413183600/1413185640.npy")
+'''
 

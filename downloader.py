@@ -1,10 +1,12 @@
 import os
+from urllib import response
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 
 
 def download_flac_files(
+    base,
     house,
     week,
     year,
@@ -60,10 +62,7 @@ def download_flac_files(
     os.makedirs(download_dir, exist_ok=True)
 
     # UK-DALE URL
-    base_url = (
-        f"https://dap.ceda.ac.uk/edc/efficiency/residential/"
-        f"EnergyConsumption/Domestic/UK-DALE-2015/UK-DALE-16kHz/"
-        f"house_{house}/{year}/wk{week}/"
+    base_url = (f"{base}house_{house}/{year}/wk{week}/"
     )
 
     # Fetch page
@@ -77,7 +76,8 @@ def download_flac_files(
 
     # Parse file links
     soup = BeautifulSoup(response.text, "html.parser")
-
+    print(response.status_code)
+    print(response.text[:1000])  
     files = [
         link.get("href")
         for link in soup.find_all("a")
