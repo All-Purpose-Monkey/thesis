@@ -2,13 +2,11 @@
 
 This is a NILM (Non-Intrusive Load Monitoring) project that classifies appliance activity from high-frequency STFT spectrograms of UK-DALE mains data. This document is a navigation guide for reviewers: it explains what each file does and where to look first, so you don't have to read the whole repo to understand the work.
 
-> **A note on the mess.** The research was done somewhat backwards — a compact baseline (`CNNmini`) unexpectedly outperformed the larger models, so several things had to be redone around it. As a result, a lot of files are experiments, ablations, or dead-end explorations. The sections below are ordered by importance: **start at the top**. The later sections document artefacts of that exploration and can be skimmed or skipped.
-
-Only Python source is described here. Models (`trained_models/`, `models/*.pth`), and generated `.png` / `.csv` / `.pdf` outputs are omitted intentionally — they are results, not code.
+> **A note on the mess.** The research was done somewhat backwards — a compact baseline (`CNNmini`) unexpectedly outperformed the larger models, so several things had to be redone around it. As a result, a lot of files are experiments, ablations, or dead-end explorations. The sections below are ordered by importance, the later sections document artefacts of that exploration and can be skimmed or skipped.
 
 ---
 
-## Start here — the main model
+## main model files
 
 The primary model used throughout the thesis is **`CNNmini` + `MultiHeadClassifier_mini`**. Everything else is secondary.
 
