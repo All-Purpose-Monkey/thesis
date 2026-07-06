@@ -1,4 +1,4 @@
-# Thesis Repository — Reviewer's Guide
+# Thesis Repository
 
 This is a NILM (Non-Intrusive Load Monitoring) project that classifies appliance activity from high-frequency STFT spectrograms of UK-DALE mains data. This document is a navigation guide for reviewers: it explains what each file does and where to look first, so you don't have to read the whole repo to understand the work.
 
