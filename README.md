@@ -1,8 +1,8 @@
 # Thesis Repository
 
-This is a NILM (Non-Intrusive Load Monitoring) project that classifies appliance activity from high-frequency STFT spectrograms of UK-DALE mains data. This document is a navigation guide for reviewers: it explains what each file does and where to look first, so you don't have to read the whole repo to understand the work.
+This is a NILM (Non-Intrusive Load Monitoring) project that classifies appliance activity from high-frequency STFT spectrograms of UK-DALE mains data. This document is a navigation guide for reviewers: it explains what each file does and where to look first, so you don't have to read the whole repo to understand the work. These experiments were performed using the GPU4EDU clusters from the college - the associated sh files are alaso sotred in the bottom.
 
-> **A note on the mess.** The research was done somewhat backwards — a compact baseline (`CNNmini`) unexpectedly outperformed the larger models, so several things had to be redone around it. As a result, a lot of files are experiments, ablations, or dead-end explorations. The sections below are ordered by importance, the later sections document artefacts of that exploration and can be skimmed or skipped.
+> **A note on the mess.** The research was done somewhat backwards — a compact baseline (`CNNmini`) unexpectedly outperformed the larger models, so several things had to be redone around it. As a result, a lot of files are experiments, ablations, or dead-end explorations. The sections below are ordered by importance, the later sections document artefacts of that exploration and can be skimmed or skipped. I hope to take this research further and a lot of those artefacts have been retained for those reasons. I have developed most of the code manually and only used AI for writting comments and sanity checks baked in for better documentation and some logging components for ease of tracking in error file of runs, the files where that is not the case has been mentiond explicitly.
 
 ---
 
@@ -33,10 +33,10 @@ Data loading, preprocessing, and shared utilities that the main model depends on
 ### Preprocessing (root)
 | File | Description |
 |------|-------------|
-| `preprocess.py` | FLAC signal normalization and the main STFT preprocessing pipeline that turns raw mains into spectrogram segments. |
-| `preprocess_stft.py` | Standalone STFT segment generator with explicit settings (days, STFT params) mirroring the main pipeline. |
+| `preprocess.py` | FLAC signal normalization and the main STFT preprocessing pipeline that turns raw mains into spectrogram segments. There are multiple normalisation and signal amping functions and mechanics available in there but none of them were used, in the final paper and experiments only vanilla settings on current stfts did all the heavy lifting. |
+| `preprocess_stft.py` | Standalone STFT segment generator with explicit settings (days, STFT params) mirroring the main pipeline. Used for channel abelation test creation|
 | `preprocess_test.py` | Downloads and prepares the 2017 held-out UK-DALE test set (`.h5`). |
-| `downloader.py` | Downloads raw FLAC mains recordings for selected days/hours from the dataset source. |
+| `downloader.py` | Downloads raw FLAC mains recordings for selected days/hours from the dataset source and the label files. |
 
 ### `utils/`
 | File | Description |
@@ -49,7 +49,7 @@ Data loading, preprocessing, and shared utilities that the main model depends on
 | File | Description |
 |------|-------------|
 | `training/loss.py` | Loss functions — BCE, focal loss, and the SSL negative-cosine-similarity loss. |
-| `training/downstream.py` | `train_downstream` — downstream classifier training loop (used after SSL pretraining). |
+| `training/downstream.py` | `train_downstream` — classifier training loop (initially developed to be used after SSL pretraining - but works for any supervision training). |
 
 ---
 
@@ -63,9 +63,9 @@ Scripts for testing on held-out data and producing the analysis in the write-up.
 | `gen_test_preds.py` | Generates test-set predictions from a trained model for downstream analysis. |
 | `eda.py` | Label-level exploratory data analysis (appliance activation stats). |
 | `eda_2.py` | EDA of power buckets / NILM energy basins across appliances. |
-| `eda_heldout.py` | Error analysis on the held-out set — bands how confidently/wrongly the model misclassified. |
-| `experiment_analytics.py` | Produces the final thesis figures (e.g. channel-ablation plots) into `results/finale/`. |
-| `grad_cam.py` | Grad-CAM saliency maps to visualize what the CNN attends to in the spectrograms. |
+| `eda_heldout.py` | Error analysis on the held-out set — bands how confidently/wrongly the model misclassified. - developed with the help of AI|
+| `experiment_analytics.py` | Produces the final thesis figures (e.g. channel-ablation plots) into `results/finale/`. - plotting code developed with AI|
+| `grad_cam.py` | Grad-CAM saliency maps to visualize what the CNN attends to in the spectrograms. - developed with AI based on code implmentations found online|
 | `tests.py` | Sanity checks on the data (e.g. verifying 6-second timestamp spacing). |
 | `cal_test.py` | One-off calibration check: FLAC → WAV → STFT using the house calibration config. |
 
@@ -121,4 +121,4 @@ Everything below is from an earlier self-supervised-learning (SSL) direction and
 
 ---
 
-*This README was written by Claude (Cowork mode) as a navigation guide based on the repository contents.*
+*The coding help was done with Claude Sonnet 4.6, complining this Readme with Opus 4.8 as a navigation guide based on the repository contents.*
