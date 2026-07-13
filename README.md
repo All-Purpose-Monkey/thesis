@@ -1,124 +1,39 @@
-# Thesis Repository
+# What Does the Appliance Say?
+### Audio-inspired feature extraction and vision-based deep learning for multi-appliance state classification in a sparse label regime
 
-This is a NILM (Non-Intrusive Load Monitoring) project that classifies appliance activity from high-frequency STFT spectrograms of UK-DALE mains data. This document is a navigation guide for reviewers: it explains what each file does and where to look first, so you don't have to read the whole repo to understand the work. These experiments were performed using the GPU4EDU clusters from the college - the associated sh files are alaso sotred in the bottom.
+**MSc Thesis — Data Science & Society, Tilburg University (2026) | Author: Yash Saraswat**
 
-> **A note on the mess.** The research was done somewhat backwards — a compact baseline (`CNNmini`) unexpectedly outperformed the larger models, so several things had to be redone around it. As a result, a lot of files are experiments, ablations, or dead-end explorations. The sections below are ordered by importance, the later sections document artefacts of that exploration and can be skimmed or skipped. I hope to take this research further and a lot of those artefacts have been retained for those reasons. I have developed most of the code manually and only used AI for writting comments and sanity checks baked in for better documentation and some logging components for ease of tracking in error file of runs, the files where that is not the case has been mentiond explicitly.
+## Summary
 
----
+Non-Intrusive Load Monitoring (NILM) infers appliance activity from a single aggregate household signal. UK-DALE's 16 kHz current data is literally distributed as two-channel FLAC audio — this thesis takes that framing seriously and treats appliance-state detection as a **sound-classification problem**: STFT spectrograms of six-second current windows are passed as images to a compact 2D CNN that predicts six appliance states simultaneously (kettle, toaster, microwave, dishwasher, fridge, washing machine), every window, with no event-detection stage.
 
-## main model files
+**Key results:**
+- An ultra-light CNN (**<90k parameters**, kernel 5×5, stride 3, frequency-only adaptive pooling) reaches **macro F1 = 0.957** across three in-distribution UK-DALE 2015 households.
+- Controlled ablations show the current channel far outperforms voltage (macro F1 0.73 vs. 0.34) and that **frequency-preserving pooling is the dominant architectural driver** — temporal structure within a window barely matters.
+- On a strictly held-out 2017 household, F1 collapses to 0.39 while **macro AUROC holds at 0.84**: the encoder still ranks activations correctly, but decision thresholds don't transfer. A contiguity analysis shows the in-distribution figure is itself an optimistic ceiling, and comparison against HF-NILM baselines with true out-of-distribution protocols shows this collapse is a documented property of the regime.
+- Grad-CAM confirms the network attends to coherent, appliance-specific harmonic bands, consistent with the harmonic-signature literature.
+- Class imbalance is severe (fridge dominates; toaster is <0.2% of active segments) and is handled with positive-weighted focal loss plus per-appliance threshold sweeps.
 
-The primary model used throughout the thesis is **`CNNmini` + `MultiHeadClassifier_mini`**. Everything else is secondary.
+**Compute:** all experiments ran on the university **GPU4EDU cluster** via SLURM-style shell job scripts (CUDA 11 / PyTorch 2.7); the `run_*.sh` launchers in the repo root map 1:1 to the experiment files.
 
-| File | Description |
-|------|-------------|
-| `models/backbone.py` | Defines the CNN feature extractors. **`CNNmini`** is the main backbone used in the thesis; `CNNBackbone` is the larger original baseline. |
-| `models/heads.py` | Defines the classifier heads. **`MultiHeadClassifier_mini`** is the main per-appliance head used with `CNNmini`; `MultiHeadClassifier_big` is the earlier larger variant. |
-| `cnn_mini.py` | Main training/evaluation run for `CNNmini` + `MultiHeadClassifier_mini`. This is the headline experiment. |
-| `cnn_baseline.py` | Training run for the original larger baseline model — the reference the mini model is compared against. |
+**Stack:** PyTorch, TorchAudio, Librosa, SoundFile, NumPy, Pandas, SciPy, scikit-learn, Matplotlib.
 
----
+## Repository guide
 
-## Core pipeline
+The research was done somewhat backwards — a compact baseline (CNNmini) unexpectedly outperformed larger models, so several things were redone around it. Files below are ordered by importance; later sections are exploration artefacts retained for provenance and future work.
 
-Data loading, preprocessing, and shared utilities that the main model depends on.
+**Main model:** `models/backbone.py` (CNNmini encoder), `models/heads.py` (per-appliance sigmoid heads), `cnn_mini.py` (headline experiment), `cnn_baseline.py` (larger reference model).
 
-### `data/`
-| File | Description |
-|------|-------------|
-| `data/dataset.py` | `STFTDataset` — the PyTorch `Dataset` wrapping STFT spectrogram tensors and (optional) labels. |
-| `data/loader.py` | Train/test splitting and NaN-row cleaning helpers (`split_data`, `remove_nan_rows`). |
-| `data/augmentation.py` | STFT augmentation views (noise, time-shift) — used by the SSL experiments (see later section). |
+**Core pipeline:** `preprocess.py` / `preprocess_stft.py` (FLAC calibration → STFT segments), `preprocess_test.py` + `downloader.py` (data acquisition), `data/` (dataset, splits, augmentations), `training/loss.py` (BCE, focal, SSL losses), `training/downstream.py` (training loop), `utils/` (metrics with per-appliance threshold sweeping, plotting, logging).
 
-### Preprocessing (root)
-| File | Description |
-|------|-------------|
-| `preprocess.py` | FLAC signal normalization and the main STFT preprocessing pipeline that turns raw mains into spectrogram segments. There are multiple normalisation and signal amping functions and mechanics available in there but none of them were used, in the final paper and experiments only vanilla settings on current stfts did all the heavy lifting. |
-| `preprocess_stft.py` | Standalone STFT segment generator with explicit settings (days, STFT params) mirroring the main pipeline. Used for channel abelation test creation|
-| `preprocess_test.py` | Downloads and prepares the 2017 held-out UK-DALE test set (`.h5`). |
-| `downloader.py` | Downloads raw FLAC mains recordings for selected days/hours from the dataset source and the label files. |
+**Evaluation & analysis:** `heldout_test.py` (2017 generalisation test), `gen_test_preds.py`, `eda*.py` (label statistics, energy basins, held-out error analysis), `experiment_analytics.py` (final thesis figures), `grad_cam.py` (saliency maps), `island_study.py` (label-contiguity / leakage analysis).
 
-### `utils/`
-| File | Description |
-|------|-------------|
-| `utils/metrics.py` | Metric computation, including per-appliance threshold sweeping. |
-| `utils/plotting.py` | Plotting helpers (e.g. STFT spectrogram visualization). |
-| `utils/logging.py` | Training-history saving / logging helpers. |
+**Ablations:** `cnn_mini_ksize.py`, `cnn_mini_stride.py`, `cnn_mini_adpooling.py`, `cnn_pad_loop.py`, `cnn_mini_hp.py`, `channel_abelation.py` — the systematic sweeps behind the architecture choice.
 
-### `training/`
-| File | Description |
-|------|-------------|
-| `training/loss.py` | Loss functions — BCE, focal loss, and the SSL negative-cosine-similarity loss. |
-| `training/downstream.py` | `train_downstream` — classifier training loop (initially developed to be used after SSL pretraining - but works for any supervision training). |
+**Earlier SSL direction (retained):** `models/simsiam.py`, `main_simsiam.py`, `training/training_ssl.py` (with hardness weighting), `training/active_learning.py` — a SimSiam self-supervised pretraining line that predates the final approach and is the basis for planned future work on cross-household transfer.
 
----
+`configs/` holds the YAML experiment configs; each experiment has a matching `run_*.sh` cluster job script.
 
-## Evaluation & analysis
+## AI usage
 
-Scripts for testing on held-out data and producing the analysis in the write-up.
-
-| File | Description |
-|------|-------------|
-| `heldout_test.py` | Evaluates a trained model on the 2017 held-out test set. |
-| `gen_test_preds.py` | Generates test-set predictions from a trained model for downstream analysis. |
-| `eda.py` | Label-level exploratory data analysis (appliance activation stats). |
-| `eda_2.py` | EDA of power buckets / NILM energy basins across appliances. |
-| `eda_heldout.py` | Error analysis on the held-out set — bands how confidently/wrongly the model misclassified. - developed with the help of AI|
-| `experiment_analytics.py` | Produces the final thesis figures (e.g. channel-ablation plots) into `results/finale/`. - plotting code developed with AI|
-| `grad_cam.py` | Grad-CAM saliency maps to visualize what the CNN attends to in the spectrograms. - developed with AI based on code implmentations found online|
-| `tests.py` | Sanity checks on the data (e.g. verifying 6-second timestamp spacing). |
-| `cal_test.py` | One-off calibration check: FLAC → WAV → STFT using the house calibration config. |
-
----
-
-## Ablation studies
-
-Systematic sweeps around the `CNNmini` architecture. These support the design choices but are not the main result — skim as needed.
-
-| File | Description |
-|------|-------------|
-| `cnn_mini_ksize.py` | Kernel-size ablation for the mini model. |
-| `cnn_mini_stride.py` | Stride ablation for the mini model. |
-| `cnn_mini_adpooling.py` | Adaptive-pooling shape ablation (frequency- vs time-heavy pooling). |
-| `cnn_pad_loop.py` | Padding (amount + symmetry) ablation. |
-| `cnn_mini_hp.py` | Hyperparameter (LR / weight-decay) sweep for the mini model. |
-| `channel_abelation.py` | Channel-ablation study (current vs voltage input channels). |
-| `island_study.py` | "Island" study on spectrogram segment structure/connectivity. |
-
----
-
-## Run scripts (root)
-
-Most experiments have a matching shell / SSH job script in the root directory that launches them on the compute server. They map 1:1 to the Python files above by name:
-
-`run_cnn_mini.sh`, `run_cnn_baseline.sh`, `run_cnn_ksize.sh`, `run_cnn_stride.sh`, `run_cnn_adpooling.sh`, `run_cnn_pad_loop.sh`, `run_cnn_hp.sh`, `run_channel_test.sh`, `run_heldout.sh`, `run_gradscan.sh`, `run_server_test.sh`, `run_bootstrap_ci.sh`, `run_cnn_al.sh`, `run_simsiam.sh`.
-
-`configs/` holds the corresponding YAML configs (`cnn_baseline.yaml`, `cnn_baseline_hp_abelatet.yaml`, `cnn_test.yaml`, `experiment_simsiam.yaml`).
-
----
-
-## Artefacts of earlier / abandoned research
-
-Everything below is from an earlier self-supervised-learning (SSL) direction and other exploratory work that was **not part of the final approach**. Kept for provenance; **reviewers can safely skip this section.**
-
-### Self-supervised learning (SimSiam, pretraining, active learning, augments)
-| File | Description |
-|------|-------------|
-| `models/simsiam.py` | SimSiam self-supervised model (projector/predictor over the backbone). |
-| `main_simsiam.py` | Main SimSiam pretraining run. |
-| `test_simsiam.py` | Evaluation run for SimSiam-pretrained representations. |
-| `simsiam_proto.py` | Early SimSiam pipeline/label-setup prototype. |
-| `training/training_ssl.py` | SSL training loop, including hardness-weighting logic. |
-| `training/active_learning.py` | Active-learning uncertainty sampling over the unlabeled pool. |
-| `cnn_al_loop.py` | Active-learning training loop experiment. |
-| `data/augmentation.py` | (listed above) augmentation views, originally built for SSL. |
-
-### Misc / dead-ends
-| File | Description |
-|------|-------------|
-| `hot_hot_fix.py` | Ad-hoc patch script (requires manual edits before running). |
-| `trashburner.py` | Scratch/throwaway script (duplicate of some preprocessing normalization code). |
-
----
-
-*The coding help was done with Claude Sonnet 4.6, complining this Readme with Opus 4.8 as a navigation guide based on the repository contents.*
+Code was developed manually by the author. AI assistance (Claude Sonnet 4.6) was used for code comments, sanity checks, logging utilities, and parts of the plotting/Grad-CAM implementations — flagged explicitly in the files where applicable. This README was compiled with AI assistance as a navigation guide based on repository contents.
