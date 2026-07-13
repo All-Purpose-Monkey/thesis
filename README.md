@@ -16,7 +16,7 @@ Non-Intrusive Load Monitoring (NILM) infers appliance activity from a single agg
 
 **Compute:** all experiments ran on the university **GPU4EDU cluster** via SLURM-style shell job scripts (CUDA 11 / PyTorch 2.7); the `run_*.sh` launchers in the repo root map 1:1 to the experiment files.
 
-**Stack:** PyTorch, TorchAudio, Librosa, SoundFile, NumPy, Pandas, SciPy, scikit-learn, Matplotlib.
+**Stack:** PyTorch, Cuda, TorchAudio, Librosa, SoundFile, NumPy, Pandas, SciPy, scikit-multilearn, Matplotlib.
 
 ## Repository guide
 
