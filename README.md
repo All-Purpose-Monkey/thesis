@@ -3,7 +3,7 @@
 
 **MSc Thesis — Data Science & Society, Tilburg University (2026) | Author: Yash Saraswat**
 
-📄 **[Read the full thesis (PDF)](yash_DSS_Thesis.pdf)**
+📄 **[Read the full thesis (PDF)](Thesis_doc.pdf)**
 
 ## Summary
 
